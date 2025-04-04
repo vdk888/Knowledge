@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 
-// the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+// Using "gpt-4o-mini" model as requested by the user
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || "sk-your-key" });
 
 export interface ConceptInfo {
@@ -72,7 +72,7 @@ Make your explanation clear, engaging, and appropriate for a learner at the ${co
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: prompt }
@@ -127,7 +127,7 @@ If the question is not related to this concept, gently bring the focus back to "
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: messageHistory,
       temperature: 0.7,
       max_tokens: 800,
@@ -166,7 +166,7 @@ Format your response as valid JSON with the structure:
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: prompt }

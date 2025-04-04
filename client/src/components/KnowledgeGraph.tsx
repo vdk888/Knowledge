@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 import { useQuery } from "@tanstack/react-query";
-import { Concept } from "@shared/schema";
+import { Concept, UserProgress } from "@shared/schema";
+import { useAuth } from "@/hooks/use-auth";
 
 interface KnowledgeGraphProps {
   onSelectConcept: (concept: Concept) => void;
   currentConceptId?: number;
+  showOnlyLearned?: boolean;
 }
 
 interface GraphNode extends d3.SimulationNodeDatum {
@@ -39,6 +41,14 @@ const getDomainColor = (domain: string): string => {
       return "#10B981"; // green-500
     case "Biology":
       return "#F59E0B"; // amber-500
+    case "Economics":
+      return "#EF4444"; // red-500
+    case "Sociology":
+      return "#EC4899"; // pink-500 
+    case "Psychology":
+      return "#6366F1"; // indigo-500
+    case "Human Science":
+      return "#14B8A6"; // teal-500
     default:
       return "#6B7280"; // gray-500
   }
@@ -54,19 +64,76 @@ const getDomainStrokeColor = (domain: string): string => {
       return "#059669"; // green-700
     case "Biology":
       return "#B45309"; // amber-700
+    case "Economics":
+      return "#B91C1C"; // red-700
+    case "Sociology":
+      return "#BE185D"; // pink-700
+    case "Psychology":
+      return "#4338CA"; // indigo-700
+    case "Human Science":
+      return "#0F766E"; // teal-700
     default:
       return "#4B5563"; // gray-600
   }
 };
 
-const KnowledgeGraph = ({ onSelectConcept, currentConceptId }: KnowledgeGraphProps) => {
+const KnowledgeGraph = ({ onSelectConcept, currentConceptId, showOnlyLearned = true }: KnowledgeGraphProps) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [width, setWidth] = useState(800);
   const [height, setHeight] = useState(500);
+  const { user } = useAuth();
+  const [discoveredNodes, setDiscoveredNodes] = useState<Set<number>>(new Set());
   
-  const { data, isLoading, error } = useQuery<GraphData>({
+  // Get the full knowledge graph data
+  const { data: graphData, isLoading: isGraphLoading, error: graphError } = useQuery<GraphData>({
     queryKey: ["/api/knowledge-graph"],
   });
+  
+  // Get user progress to identify known concepts
+  const { data: userProgress = [], isLoading: isProgressLoading } = useQuery<UserProgress[]>({
+    queryKey: ["/api/user/progress"],
+    enabled: !!user && showOnlyLearned,
+  });
+  
+  // Filter the graph to only show nodes that the user knows
+  const isLoading = isGraphLoading || isProgressLoading;
+  const error = graphError;
+  
+  // Compute the filtered data based on user's knowledge
+  const data = React.useMemo(() => {
+    if (!graphData || (!userProgress && showOnlyLearned)) return graphData;
+    
+    // If we're not restricting to learned nodes or user has no progress yet, show all nodes
+    if (!showOnlyLearned || userProgress.length === 0) return graphData;
+    
+    // Otherwise, filter based on learned concepts and discovered nodes
+    const learnedConceptIds = new Set(
+      userProgress
+        .filter(p => p.isLearned)
+        .map(p => p.conceptId)
+    );
+    
+    // Combine learned concepts with discovered nodes
+    const visibleNodeIds = new Set([...Array.from(learnedConceptIds), ...Array.from(discoveredNodes)]);
+    
+    // Also include the current concept if it exists
+    if (currentConceptId) visibleNodeIds.add(currentConceptId);
+    
+    // Filter nodes to only include visible ones
+    const filteredNodes = graphData.nodes.filter(node => visibleNodeIds.has(node.id));
+    
+    // Filter links to only include those where both source and target are visible
+    const filteredLinks = graphData.links.filter(link => {
+      const sourceId = typeof link.source === 'number' ? link.source : link.source.id;
+      const targetId = typeof link.target === 'number' ? link.target : link.target.id;
+      return visibleNodeIds.has(sourceId) && visibleNodeIds.has(targetId);
+    });
+    
+    return {
+      nodes: filteredNodes,
+      links: filteredLinks
+    };
+  }, [graphData, userProgress, showOnlyLearned, discoveredNodes, currentConceptId]);
   
   useEffect(() => {
     const handleResize = () => {
@@ -124,6 +191,28 @@ const KnowledgeGraph = ({ onSelectConcept, currentConceptId }: KnowledgeGraphPro
       .attr("cursor", "pointer")
       .on("click", (event, d) => {
         event.stopPropagation();
+        
+        // When a node is clicked, discover neighboring concepts too
+        if (showOnlyLearned && graphData && graphData.links) {
+          const newDiscoveredNodes = new Set(discoveredNodes);
+          
+          // Find all nodes connected to the selected node
+          graphData.links.forEach(link => {
+            const sourceId = typeof link.source === 'number' ? link.source : link.source.id;
+            const targetId = typeof link.target === 'number' ? link.target : link.target.id;
+            
+            // If this node is connected to the clicked node, add it to discovered nodes
+            if (sourceId === d.id) {
+              newDiscoveredNodes.add(targetId);
+            } else if (targetId === d.id) {
+              newDiscoveredNodes.add(sourceId);
+            }
+          });
+          
+          // Update the discovered nodes state
+          setDiscoveredNodes(newDiscoveredNodes);
+        }
+        
         onSelectConcept(d);
       })
       .call(drag(simulation) as any);

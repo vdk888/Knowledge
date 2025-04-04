@@ -308,6 +308,94 @@ export class MemStorage implements IStorage {
       description: "The determination of the computational complexity of algorithms"
     });
     
+    // Create sample concepts for Economics domain
+    const microeconomics = this.seedConcept({
+      name: "Microeconomics",
+      domain: "Economics",
+      difficulty: "intermediate",
+      description: "The study of individual and business decisions regarding the allocation of resources and prices of goods and services"
+    });
+    
+    const macroeconomics = this.seedConcept({
+      name: "Macroeconomics",
+      domain: "Economics",
+      difficulty: "intermediate",
+      description: "The study of the behavior of the economy as a whole, including inflation, unemployment, and economic growth"
+    });
+    
+    const gameTheory = this.seedConcept({
+      name: "Game Theory",
+      domain: "Economics",
+      difficulty: "advanced",
+      description: "The study of mathematical models of strategic interaction between rational decision-makers"
+    });
+    
+    // Create sample concepts for Sociology domain
+    const socialStructures = this.seedConcept({
+      name: "Social Structures",
+      domain: "Sociology",
+      difficulty: "beginner",
+      description: "The study of how society is organized and how social institutions influence human behavior"
+    });
+    
+    const socialInequality = this.seedConcept({
+      name: "Social Inequality",
+      domain: "Sociology",
+      difficulty: "intermediate",
+      description: "The study of unequal distribution of resources and opportunities in society"
+    });
+    
+    const urbanSociology = this.seedConcept({
+      name: "Urban Sociology",
+      domain: "Sociology",
+      difficulty: "intermediate",
+      description: "The study of social life and interactions in urban areas"
+    });
+    
+    // Create sample concepts for Psychology domain
+    const cognitivePsychology = this.seedConcept({
+      name: "Cognitive Psychology",
+      domain: "Psychology",
+      difficulty: "intermediate",
+      description: "The study of mental processes such as attention, language use, memory, perception, problem solving, and thinking"
+    });
+    
+    const developmentalPsychology = this.seedConcept({
+      name: "Developmental Psychology",
+      domain: "Psychology",
+      difficulty: "intermediate",
+      description: "The study of how humans develop psychologically from infancy to old age"
+    });
+    
+    const clinicalPsychology = this.seedConcept({
+      name: "Clinical Psychology",
+      domain: "Psychology",
+      difficulty: "advanced",
+      description: "The integration of science, theory, and clinical knowledge for understanding, preventing, and relieving psychological distress"
+    });
+    
+    // Create sample concepts for Human Science domain
+    const anthropology = this.seedConcept({
+      name: "Anthropology",
+      domain: "Human Science",
+      difficulty: "intermediate",
+      description: "The study of human biological and cultural development throughout history"
+    });
+    
+    const linguistics = this.seedConcept({
+      name: "Linguistics",
+      domain: "Human Science",
+      difficulty: "intermediate",
+      description: "The scientific study of language and its structure"
+    });
+    
+    const humanGeography = this.seedConcept({
+      name: "Human Geography",
+      domain: "Human Science",
+      difficulty: "intermediate",
+      description: "The study of the relationship between human societies and their physical environment"
+    });
+    
     // Create relationships
     this.seedRelationship({
       sourceId: classicalMechanics.id,
@@ -377,6 +465,95 @@ export class MemStorage implements IStorage {
       targetId: conservationLaws.id,
       relationshipType: "prerequisite",
       strength: 7
+    });
+    
+    // Economics relationships
+    this.seedRelationship({
+      sourceId: microeconomics.id,
+      targetId: macroeconomics.id,
+      relationshipType: "related",
+      strength: 8
+    });
+    
+    this.seedRelationship({
+      sourceId: gameTheory.id,
+      targetId: microeconomics.id,
+      relationshipType: "related",
+      strength: 7
+    });
+    
+    this.seedRelationship({
+      sourceId: basicCalculus.id,
+      targetId: macroeconomics.id,
+      relationshipType: "prerequisite",
+      strength: 6
+    });
+    
+    // Sociology relationships
+    this.seedRelationship({
+      sourceId: socialStructures.id,
+      targetId: socialInequality.id,
+      relationshipType: "related",
+      strength: 8
+    });
+    
+    this.seedRelationship({
+      sourceId: socialStructures.id,
+      targetId: urbanSociology.id,
+      relationshipType: "related",
+      strength: 7
+    });
+    
+    // Psychology relationships
+    this.seedRelationship({
+      sourceId: cognitivePsychology.id,
+      targetId: developmentalPsychology.id,
+      relationshipType: "related",
+      strength: 7
+    });
+    
+    this.seedRelationship({
+      sourceId: cognitivePsychology.id,
+      targetId: clinicalPsychology.id,
+      relationshipType: "related",
+      strength: 6
+    });
+    
+    // Human Science relationships
+    this.seedRelationship({
+      sourceId: anthropology.id,
+      targetId: linguistics.id,
+      relationshipType: "related",
+      strength: 6
+    });
+    
+    this.seedRelationship({
+      sourceId: anthropology.id,
+      targetId: humanGeography.id,
+      relationshipType: "related",
+      strength: 7
+    });
+    
+    // Cross-domain relationships
+    this.seedRelationship({
+      sourceId: gameTheory.id,
+      targetId: cognitivePsychology.id,
+      relationshipType: "related",
+      strength: 5
+    });
+    
+    this.seedRelationship({
+      sourceId: socialStructures.id,
+      targetId: anthropology.id,
+      relationshipType: "related",
+      strength: 7
+    });
+    
+    this.seedRelationship({
+      sourceId: urbanSociology.id,
+      targetId: humanGeography.id,
+      relationshipType: "related",
+      strength: 8
     });
   }
   

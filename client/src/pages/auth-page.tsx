@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { z } from "zod";
@@ -35,13 +35,8 @@ export default function AuthPage() {
   const [mode, setMode] = useState<FormMode>("login");
   const { loginMutation, registerMutation, user } = useAuth();
   const [, navigate] = useLocation();
-
-  // If user is already logged in, redirect to home
-  if (user) {
-    navigate("/");
-    return null;
-  }
-
+  
+  // Define forms before any conditional returns
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -68,6 +63,13 @@ export default function AuthPage() {
     const { confirmPassword, ...userData } = values;
     registerMutation.mutate(userData);
   };
+  
+  // Use useEffect for redirection instead of doing it in the render phase
+  useEffect(() => {
+    if (user) {
+      navigate("/");
+    }
+  }, [user, navigate]);
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">

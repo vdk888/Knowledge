@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import AppHeader from '@/components/AppHeader';
 import KnowledgeGraph from '@/components/KnowledgeGraph';
@@ -7,11 +7,15 @@ import ChatPanel from '@/components/ChatPanel';
 import ProgressDrawer from '@/components/ProgressDrawer';
 import { Concept } from '@shared/schema';
 import { useQuery } from '@tanstack/react-query';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export default function HomePage() {
   const [selectedConcept, setSelectedConcept] = useState<Concept | null>(null);
   const [isProgressDrawerOpen, setIsProgressDrawerOpen] = useState(false);
   const [currentDomain, setCurrentDomain] = useState<string | undefined>(undefined);
+  const [isChatVisible, setIsChatVisible] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const isMobile = useIsMobile();
   
   const { data: concepts = [] } = useQuery<Concept[]>({
     queryKey: ["/api/concepts"],
@@ -22,17 +26,43 @@ export default function HomePage() {
     setSelectedConcept(concept);
     // Update current domain based on selected concept
     setCurrentDomain(concept.domain);
+    
+    // On mobile, automatically show the chat panel when a concept is selected
+    if (isMobile) {
+      setIsChatVisible(true);
+    }
   };
 
   // Toggle progress drawer
   const toggleProgressDrawer = () => {
     setIsProgressDrawerOpen(!isProgressDrawerOpen);
   };
+  
+  // Toggle chat visibility (for mobile view)
+  const toggleChat = () => {
+    setIsChatVisible(!isChatVisible);
+  };
+  
+  // Toggle sidebar (for mobile view)
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* Sidebar */}
-      <Sidebar />
+      {/* Sidebar - hidden on mobile unless toggled */}
+      <Sidebar 
+        isSidebarOpen={isSidebarOpen}
+        onCloseSidebar={() => setIsSidebarOpen(false)}
+      />
+      
+      {/* Mobile sidebar overlay - only visible when sidebar is open */}
+      {isMobile && isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-20"
+          onClick={() => setIsSidebarOpen(false)}
+        ></div>
+      )}
       
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col overflow-hidden">
@@ -40,12 +70,31 @@ export default function HomePage() {
         <AppHeader 
           currentDomain={currentDomain} 
           onToggleProgressDrawer={toggleProgressDrawer}
+          onToggleSidebar={toggleSidebar}
         />
         
         {/* Content Container */}
-        <div className="flex-1 overflow-hidden flex">
-          {/* Knowledge Graph and Concept Detail */}
-          <div className="flex-1 p-6 overflow-auto">
+        <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
+          {/* Mobile only: Tab buttons */}
+          {isMobile && selectedConcept && (
+            <div className="flex border-b border-neutral-200">
+              <button
+                onClick={() => setIsChatVisible(false)}
+                className={`flex-1 py-3 text-sm font-medium ${!isChatVisible ? 'text-primary-600 border-b-2 border-primary-600' : 'text-neutral-500'}`}
+              >
+                Concept Details
+              </button>
+              <button
+                onClick={() => setIsChatVisible(true)}
+                className={`flex-1 py-3 text-sm font-medium ${isChatVisible ? 'text-primary-600 border-b-2 border-primary-600' : 'text-neutral-500'}`}
+              >
+                Chat Assistant
+              </button>
+            </div>
+          )}
+          
+          {/* Knowledge Graph and Concept Detail - hidden on mobile when chat is visible */}
+          <div className={`${isMobile && isChatVisible ? 'hidden' : 'flex-1'} p-4 md:p-6 overflow-auto`}>
             {/* Knowledge Graph */}
             <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
               <div className="flex items-center justify-between mb-4">
@@ -64,11 +113,6 @@ export default function HomePage() {
                   <button className="p-2 text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 rounded">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 12H4"></path>
-                    </svg>
-                  </button>
-                  <button className="p-2 text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 rounded">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"></path>
                     </svg>
                   </button>
                 </div>
@@ -93,8 +137,12 @@ export default function HomePage() {
             )}
           </div>
           
-          {/* Chat Panel */}
-          <ChatPanel concept={selectedConcept} />
+          {/* Chat Panel - fixed width on desktop, full width when toggled on mobile */}
+          {(!isMobile || isChatVisible) && (
+            <div className={`${isMobile ? 'flex-1' : 'w-96'} border-l border-neutral-200`}>
+              <ChatPanel concept={selectedConcept} />
+            </div>
+          )}
         </div>
       </main>
       

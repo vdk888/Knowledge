@@ -1,0 +1,81 @@
+
+Time
+Log
+04-05 11:19:14
+at NeonPreparedQuery.execute (file:///home/runner/workspace/node_modules/drizzle-orm/neon-serverless/session.js:76:33)
+04-05 11:19:44
+command finished with error [npm run start]: exit status 1
+04-05 11:19:45
+> rest-express@1.0.0 start
+04-05 11:19:45
+> NODE_ENV=production node dist/index.js
+04-05 11:21:55
+Database connection initialized successfully
+04-05 11:21:55
+Database storage initialized successfully
+04-05 11:21:55
+9:21:55 AM [express] Initializing database...
+04-05 11:22:04
+Database schema initialized successfully
+04-05 11:22:04
+9:22:04 AM [express] Database schema initialized successfully
+04-05 11:22:06
+Error seeding initial data: TypeError: client.query is not a function
+04-05 11:22:06
+at NeonPreparedQuery.execute (file:///home/runner/workspace/node_modules/drizzle-orm/neon-serverless/session.js:76:33)
+04-05 11:22:06
+at file:///home/runner/workspace/node_modules/drizzle-orm/pg-core/query-builders/select.js:708:30
+04-05 11:22:06
+at Object.startActiveSpan (file:///home/runner/workspace/node_modules/drizzle-orm/tracing.js:8:14)
+04-05 11:22:06
+at PgSelectBase.execute (file:///home/runner/workspace/node_modules/drizzle-orm/pg-core/query-builders/select.js:707:19)
+04-05 11:22:06
+at PgSelectBase.then (file:///home/runner/workspace/node_modules/drizzle-orm/query-promise.js:21:17)
+04-05 11:22:06
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+04-05 11:22:06
+9:22:06 AM [express] Warning: Error seeding initial data: TypeError: client.query is not a function
+04-05 11:22:06
+9:22:06 AM [express] Continuing with application startup...
+04-05 11:22:07
+9:22:07 AM [express] Server running on port 5000
+04-05 11:22:07
+9:22:07 AM [express] Database configured, using PostgreSQL storage
+04-05 11:22:14
+Database storage initialized successfully
+04-05 11:22:17
+9:22:14 AM [express] Initializing database...
+04-05 11:22:44
+Database schema initialized successfully
+04-05 11:22:44
+9:22:44 AM [express] Database schema initialized successfully
+04-05 11:22:44
+Error seeding initial data: TypeError: client.query is not a function
+04-05 11:22:44
+at NeonPreparedQuery.execute (file:///home/runner/workspace/node_modules/drizzle-orm/neon-serverless/session.js:76:33)
+04-05 11:22:44
+at file:///home/runner/workspace/node_modules/drizzle-orm/pg-core/query-builders/select.js:708:30
+04-05 11:22:44
+at Object.startActiveSpan (file:///home/runner/workspace/node_modules/drizzle-orm/tracing.js:8:14)
+04-05 11:22:44
+at PgSelectBase.execute (file:///home/runner/workspace/node_modules/drizzle-orm/pg-core/query-builders/select.js:707:19)
+04-05 11:22:44
+at PgSelectBase.then (file:///home/runner/workspace/node_modules/drizzle-orm/query-promise.js:21:17)
+04-05 11:22:44
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+04-05 11:22:45
+9:22:44 AM [express] Warning: Error seeding initial data: TypeError: client.query is not a function
+04-05 11:22:45
+9:22:45 AM [express] Continuing with application startup...
+04-05 11:22:46
+9:22:45 AM [express] Server running on port 5000
+04-05 11:22:46
+9:22:46 AM [express] Database configured, using PostgreSQL storage
+04-05 11:24:18
+system: received signal terminated
+04-05 12:42:28
+10:42:28 AM [express] GET /api/user 401 in 3ms
+04-05 12:42:31
+file:///home/runner/workspace/node_modules/drizzle-orm/neon-serverless/session.js:76
+04-05 12:42:31
+const result = await client.query(query, params);

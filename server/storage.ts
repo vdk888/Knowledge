@@ -22,6 +22,7 @@ export interface IStorage {
   getConceptByName(name: string): Promise<Concept | undefined>;
   getConcepts(): Promise<Concept[]>;
   getConceptsByDomain(domain: string): Promise<Concept[]>;
+  searchConcepts(query: string): Promise<Concept[]>; // Added search method
   createConcept(concept: InsertConcept): Promise<Concept>;
   
   // Relationship methods
@@ -130,6 +131,16 @@ export class MemStorage implements IStorage {
   async getConceptsByDomain(domain: string): Promise<Concept[]> {
     return Array.from(this.concepts.values()).filter(
       (concept) => concept.domain === domain
+    );
+  }
+  
+  async searchConcepts(query: string): Promise<Concept[]> {
+    const lowerCaseQuery = query.toLowerCase();
+    if (!lowerCaseQuery) {
+      return []; // Return empty if query is empty
+    }
+    return Array.from(this.concepts.values()).filter(
+      (concept) => concept.name.toLowerCase().includes(lowerCaseQuery)
     );
   }
   

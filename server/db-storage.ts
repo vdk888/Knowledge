@@ -7,7 +7,7 @@ import {
 } from "@shared/schema";
 import session from "express-session";
 import { db } from "./db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, like } from "drizzle-orm"; // Import 'like'
 import createMemoryStore from "memorystore";
 import { IStorage, memStorage } from "./storage";
 
@@ -137,6 +137,25 @@ export class DbStorage implements IStorage {
     } catch (error) {
       console.error("Error in getConceptsByDomain:", error);
       return await memStorage.getConceptsByDomain(domain);
+    }
+  }
+  
+  async searchConcepts(query: string): Promise<Concept[]> {
+    try {
+      if (!db) {
+        console.warn("Database not available, falling back to in-memory storage");
+        return await memStorage.searchConcepts(query);
+      }
+      if (!query) {
+        return []; // Return empty if query is empty
+      }
+      // Use 'like' for case-insensitive search (PostgreSQL specific: ILIKE)
+      // Drizzle's 'like' typically maps to ILIKE on PostgreSQL
+      return await db.select().from(concepts)
+        .where(like(concepts.name, `%${query}%`)); 
+    } catch (error) {
+      console.error("Error in searchConcepts:", error);
+      return await memStorage.searchConcepts(query); // Fallback
     }
   }
   

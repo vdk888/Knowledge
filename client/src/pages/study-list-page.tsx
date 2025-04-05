@@ -45,14 +45,15 @@ export default function StudyListPage() {
       isLearned: boolean;
       learnedAt?: Date;
     }) => {
-      const response = await apiRequest('/api/user/progress', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-      return response;
+      // Corrected argument order: method, url, data
+      const response = await apiRequest(
+        'POST', // method
+        '/api/user/progress', // url
+        data // data object (will be stringified by apiRequest)
+      );
+      // apiRequest now returns the Response object, we need to parse it if needed
+      // Assuming the backend returns the updated/created progress object as JSON
+      return await response.json(); 
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/user/progress"] });
@@ -79,6 +80,16 @@ export default function StudyListPage() {
   
   // Handle adding a concept to study list
   const addToStudyList = (conceptId: number) => {
+    // Check if the concept is already in the study list
+    if (isInStudyList(conceptId)) {
+      toast({
+        title: "Already in study list",
+        description: "This concept is already in your study list.",
+        variant: "default", // Or maybe 'info' if you have one
+      });
+      return; // Don't proceed further
+    }
+    
     updateProgressMutation.mutate({
       conceptId,
       isLearned: false,

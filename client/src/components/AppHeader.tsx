@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Concept } from "@shared/schema"; // Import Concept type
+import { apiRequest } from "@/lib/queryClient"; // Import apiRequest if needed for search query
 
 interface AppHeaderProps {
   currentDomain?: string;
@@ -11,12 +13,66 @@ interface AppHeaderProps {
 
 const AppHeader = ({ currentDomain, onToggleProgressDrawer, onToggleSidebar }: AppHeaderProps) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [isSearchVisible, setIsSearchVisible] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const isMobile = useIsMobile();
+  const [, navigate] = useLocation(); // For navigation
+  const searchContainerRef = useRef<HTMLDivElement>(null); // Ref for detecting clicks outside
   
   const { data: domains = [] } = useQuery<string[]>({
     queryKey: ["/api/domains"],
   });
+
+  // Debounce search query
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 300); // 300ms debounce delay
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchQuery]);
+
+  // Fetch search results when debounced query changes
+  const { data: searchResults = [], isLoading: isSearchLoading } = useQuery<Concept[]>({
+    queryKey: ["/api/concepts/search", debouncedQuery],
+    queryFn: async ({ queryKey }) => {
+      // Explicitly type the destructured queryKey elements
+      const [, query] = queryKey as [string, string]; 
+      if (!query) {
+        return []; // No query, no results
+      }
+      const res = await fetch(`/api/concepts/search?q=${encodeURIComponent(query)}`);
+      if (!res.ok) {
+        throw new Error("Network response was not ok");
+      }
+      return res.json();
+    },
+    enabled: debouncedQuery.length > 0 && isSearchFocused, // Only run query if focused and query exists
+    staleTime: 1000 * 60 * 5, // Cache results for 5 minutes
+  });
+  
+  // Handle clicks outside the search container to close dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setIsSearchFocused(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [searchContainerRef]);
+  
+  const handleResultClick = (conceptId: number) => {
+    // TODO: Navigate to the concept detail page - adjust path if needed
+    navigate(`/concept/${conceptId}`); 
+    setSearchQuery(''); // Clear search bar
+    setIsSearchFocused(false); // Close dropdown
+  };
 
   return (
     <header className="bg-white border-b border-neutral-200 py-3 px-4 md:py-4 md:px-6 flex flex-wrap items-center justify-between">
@@ -73,19 +129,55 @@ const AppHeader = ({ currentDomain, onToggleProgressDrawer, onToggleSidebar }: A
         
         {/* Search bar - hidden on mobile unless toggled */}
         {(!isMobile || isSearchVisible) && (
-          <div className="relative mr-2 md:mr-4">
-            <input 
-              type="text" 
-              placeholder="Search concepts..." 
-              className="bg-neutral-100 border-0 rounded-full py-2 px-4 w-full md:w-64 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <button className="absolute right-3 top-2 text-neutral-400">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-              </svg>
-            </button>
+          <div className="relative mr-2 md:mr-4" ref={searchContainerRef}>
+            <div className="relative">
+              <input 
+                type="text" 
+                placeholder="Search concepts..." 
+                className="bg-neutral-100 border-0 rounded-full py-2 pl-4 pr-10 w-full md:w-64 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                // onBlur is tricky with dropdowns, using click outside instead
+              />
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-400">
+                {isSearchLoading ? (
+                  // Simple spinner
+                  <svg className="animate-spin h-5 w-5 text-neutral-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                  </svg>
+                )}
+              </div>
+            </div>
+            
+            {/* Search Results Dropdown */}
+            {isSearchFocused && debouncedQuery.length > 0 && (
+              <div className="absolute left-0 mt-2 w-full md:w-80 bg-white rounded-md shadow-lg border border-neutral-200 z-20 max-h-80 overflow-y-auto">
+                {searchResults.length > 0 ? (
+                  searchResults.map((concept) => (
+                    <div
+                      key={concept.id}
+                      onClick={() => handleResultClick(concept.id)}
+                      className="px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-100 cursor-pointer flex justify-between items-center"
+                    >
+                      <span>{concept.name}</span>
+                      <span className="text-xs text-neutral-500 bg-neutral-100 px-1.5 py-0.5 rounded">
+                        {concept.domain}
+                      </span>
+                    </div>
+                  ))
+                ) : !isSearchLoading ? (
+                  <div className="px-4 py-3 text-sm text-neutral-500 text-center">
+                    No concepts found for "{debouncedQuery}"
+                  </div>
+                ) : null /* Show nothing while loading initially */}
+              </div>
+            )}
           </div>
         )}
         

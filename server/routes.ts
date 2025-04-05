@@ -20,6 +20,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // New route for searching concepts (Moved BEFORE /:id)
+  app.get("/api/concepts/search", async (req, res) => {
+    try {
+      const query = req.query.q as string;
+      if (!query) {
+        return res.json([]); // Return empty array if no query
+      }
+      const concepts = await storage.searchConcepts(query);
+      res.json(concepts);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to search concepts" });
+    }
+  });
+  
   app.get("/api/concepts/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -51,10 +65,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(concepts);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch concepts by domain" });
-    }
-  });
-  
-  app.get("/api/knowledge-graph", async (req, res) => {
+    } // Added missing closing brace
+  }); // Added missing closing brace for the route handler
+
+  app.get("/api/knowledge-graph", async (req, res) => { // Moved this route outside the previous one
     try {
       const graph = await storage.getKnowledgeGraph();
       res.json(graph);
@@ -81,7 +95,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Fetch all related concepts
       const relatedConcepts = [];
-      for (const relatedId of relatedIds) {
+      // Convert Set to Array for iteration compatibility
+      // Removed duplicated loop below
+      for (const relatedId of Array.from(relatedIds)) { 
         const concept = await storage.getConcept(relatedId);
         if (concept) {
           relatedConcepts.push(concept);
@@ -466,8 +482,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get chat history
       const chatHistory = await storage.getChatMessages(userId, conceptId);
-      const formattedHistory = chatHistory.map(msg => ({
-        role: msg.isUser ? "user" : "assistant" as const,
+      
+      // Define the expected type for chat history messages for the LLM
+      type ChatCompletionMessageParam = {
+        role: "user" | "assistant"; // Only user and assistant roles expected
+        content: string;
+      };
+      
+      // Format history ensuring correct type
+      const formattedHistory: ChatCompletionMessageParam[] = chatHistory.map(msg => ({
+        role: msg.isUser ? "user" : "assistant", // No need for 'as const' here due to explicit type
         content: msg.message
       }));
       

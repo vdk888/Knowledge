@@ -5,15 +5,42 @@ import {
 } from "@shared/schema";
 
 // Create the database connection
-const sql = neon(process.env.DATABASE_URL!);
-export const db = drizzle(sql as any);
+let db: any;
+let sql: any;
+
+try {
+  // Only attempt to create the connection if DATABASE_URL is provided
+  if (process.env.DATABASE_URL) {
+    sql = neon(process.env.DATABASE_URL);
+    db = drizzle(sql as any);
+    console.log("Database connection initialized successfully");
+  } else {
+    console.log("No DATABASE_URL provided, database connection not initialized");
+    sql = null;
+    db = null;
+  }
+} catch (error) {
+  console.error("Error initializing database connection:", error);
+  sql = null;
+  db = null;
+}
+
+export { db };
 
 // Initialize the database schema
 export async function initDb() {
+  // If SQL connection is not available, skip initialization
+  if (!sql || !db) {
+    console.log("Database connection not available, skipping database initialization");
+    return;
+  }
+  
   // Create database tables if they don't exist
   try {
+    const neonClient = sql as any;
+    
     // Create users table
-    await sql`
+    await neonClient`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         username TEXT UNIQUE NOT NULL,
@@ -24,7 +51,7 @@ export async function initDb() {
     `;
     
     // Create concepts table
-    await sql`
+    await neonClient`
       CREATE TABLE IF NOT EXISTS concepts (
         id SERIAL PRIMARY KEY,
         name TEXT UNIQUE NOT NULL,
@@ -36,7 +63,7 @@ export async function initDb() {
     `;
     
     // Create concept_relationships table
-    await sql`
+    await neonClient`
       CREATE TABLE IF NOT EXISTS concept_relationships (
         id SERIAL PRIMARY KEY,
         source_id INTEGER NOT NULL REFERENCES concepts(id),
@@ -48,7 +75,7 @@ export async function initDb() {
     `;
     
     // Create user_progress table
-    await sql`
+    await neonClient`
       CREATE TABLE IF NOT EXISTS user_progress (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id),
@@ -60,7 +87,7 @@ export async function initDb() {
     `;
     
     // Create chat_messages table
-    await sql`
+    await neonClient`
       CREATE TABLE IF NOT EXISTS chat_messages (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id),
@@ -80,6 +107,12 @@ export async function initDb() {
 
 // Helper function to seed initial data
 export async function seedInitialData() {
+  // If database is not available, skip seeding
+  if (!db) {
+    console.log("Database not available, skipping data seeding");
+    return;
+  }
+  
   try {
     // Check if we already have concepts in the database
     const existingConcepts = await db.select().from(concepts);

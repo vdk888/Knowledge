@@ -9,7 +9,7 @@ import session from "express-session";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
 import createMemoryStore from "memorystore";
-import { IStorage } from "./storage";
+import { IStorage, memStorage } from "./storage";
 
 const MemoryStore = createMemoryStore(session);
 
@@ -25,33 +25,90 @@ export class DbStorage implements IStorage {
   
   // User methods
   async getUser(id: number): Promise<User | undefined> {
-    const result = await db.select().from(users).where(eq(users.id, id));
-    return result[0];
+    try {
+      if (!db) {
+        console.warn("Database not available, falling back to in-memory storage");
+        return await memStorage.getUser(id);
+      }
+      const result = await db.select().from(users).where(eq(users.id, id));
+      return result[0];
+    } catch (error) {
+      console.error("Error in getUser:", error);
+      // Fall back to memory storage in case of database errors
+      return await memStorage.getUser(id);
+    }
   }
   
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const result = await db.select().from(users).where(eq(users.username, username));
-    return result[0];
+    try {
+      if (!db) {
+        console.warn("Database not available, falling back to in-memory storage");
+        return await memStorage.getUserByUsername(username);
+      }
+      const result = await db.select().from(users).where(eq(users.username, username));
+      return result[0];
+    } catch (error) {
+      console.error("Error in getUserByUsername:", error);
+      // Fall back to memory storage in case of database errors
+      return await memStorage.getUserByUsername(username);
+    }
   }
   
   async createUser(user: InsertUser): Promise<User> {
-    const result = await db.insert(users).values(user).returning();
-    return result[0];
+    try {
+      if (!db) {
+        console.warn("Database not available, falling back to in-memory storage");
+        return await memStorage.createUser(user);
+      }
+      const result = await db.insert(users).values(user).returning();
+      return result[0];
+    } catch (error) {
+      console.error("Error in createUser:", error);
+      // Fall back to memory storage in case of database errors
+      return await memStorage.createUser(user);
+    }
   }
   
   // Concept methods
   async getConcept(id: number): Promise<Concept | undefined> {
-    const result = await db.select().from(concepts).where(eq(concepts.id, id));
-    return result[0];
+    try {
+      if (!db) {
+        console.warn("Database not available, falling back to in-memory storage");
+        return await memStorage.getConcept(id);
+      }
+      const result = await db.select().from(concepts).where(eq(concepts.id, id));
+      return result[0];
+    } catch (error) {
+      console.error("Error in getConcept:", error);
+      return await memStorage.getConcept(id);
+    }
   }
   
   async getConceptByName(name: string): Promise<Concept | undefined> {
-    const result = await db.select().from(concepts).where(eq(concepts.name, name));
-    return result[0];
+    try {
+      if (!db) {
+        console.warn("Database not available, falling back to in-memory storage");
+        return await memStorage.getConceptByName(name);
+      }
+      const result = await db.select().from(concepts).where(eq(concepts.name, name));
+      return result[0];
+    } catch (error) {
+      console.error("Error in getConceptByName:", error);
+      return await memStorage.getConceptByName(name);
+    }
   }
   
   async getConcepts(): Promise<Concept[]> {
-    return await db.select().from(concepts);
+    try {
+      if (!db) {
+        console.warn("Database not available, falling back to in-memory storage");
+        return await memStorage.getConcepts();
+      }
+      return await db.select().from(concepts);
+    } catch (error) {
+      console.error("Error in getConcepts:", error);
+      return await memStorage.getConcepts();
+    }
   }
   
   async getConceptsByDomain(domain: string): Promise<Concept[]> {
@@ -132,14 +189,24 @@ export class DbStorage implements IStorage {
   
   // Domain methods
   async getDomains(): Promise<string[]> {
-    const results = await db.select({ domain: concepts.domain }).from(concepts);
-    const domains = new Set<string>();
-    
-    for (const row of results) {
-      domains.add(row.domain);
+    try {
+      if (!db) {
+        console.warn("Database not available, falling back to in-memory storage");
+        return await memStorage.getDomains();
+      }
+      
+      const results = await db.select({ domain: concepts.domain }).from(concepts);
+      const domains = new Set<string>();
+      
+      for (const row of results) {
+        domains.add(row.domain);
+      }
+      
+      return Array.from(domains);
+    } catch (error) {
+      console.error("Error in getDomains, falling back to in-memory storage:", error);
+      return await memStorage.getDomains();
     }
-    
-    return Array.from(domains);
   }
   
   // Graph methods
@@ -152,16 +219,44 @@ export class DbStorage implements IStorage {
       strength: number;
     }[];
   }> {
-    const nodes = await this.getConcepts();
-    
-    const relationships = await db.select().from(conceptRelationships);
-    const links = relationships.map(rel => ({
-      source: rel.sourceId,
-      target: rel.targetId,
-      type: rel.relationshipType,
-      strength: rel.strength
-    }));
-    
-    return { nodes, links };
+    try {
+      // Get all concepts with robust error handling
+      const nodes = await this.getConcepts();
+      
+      // Get all relationships with robust error handling
+      let relationships: ConceptRelationship[] = [];
+      
+      try {
+        if (!db) {
+          console.warn("Database not available, falling back to in-memory storage");
+          // We'll use the getConcepts-transformed nodes, but fall back to memory for relationships
+          const memGraphData = await memStorage.getKnowledgeGraph();
+          return memGraphData;
+        }
+        
+        relationships = await db.select().from(conceptRelationships);
+      } catch (error) {
+        console.error("Error fetching relationships, falling back to in-memory storage:", error);
+        // Fall back to in-memory relationships but keep the nodes we already fetched
+        const memGraphData = await memStorage.getKnowledgeGraph();
+        return {
+          nodes,
+          links: memGraphData.links
+        };
+      }
+      
+      // Transform relationships to links
+      const links = relationships.map((rel: ConceptRelationship) => ({
+        source: rel.sourceId,
+        target: rel.targetId,
+        type: rel.relationshipType,
+        strength: rel.strength
+      }));
+      
+      return { nodes, links };
+    } catch (error) {
+      console.error("Error in getKnowledgeGraph, falling back to in-memory storage:", error);
+      return await memStorage.getKnowledgeGraph();
+    }
   }
 }

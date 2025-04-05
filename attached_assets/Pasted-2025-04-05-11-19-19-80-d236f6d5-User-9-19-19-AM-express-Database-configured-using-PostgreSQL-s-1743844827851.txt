@@ -1,0 +1,98 @@
+2025-04-05 11:19:19.80
+d236f6d5
+User
+9:19:19 AM [express] Database configured, using PostgreSQL storage
+2025-04-05 11:19:32.97
+fb839a99
+User
+> rest-express@1.0.0 start
+2025-04-05 11:19:32.97
+fb839a99
+User
+> NODE_ENV=production node dist/index.js
+2025-04-05 11:19:44.14
+d236f6d5
+User
+file:///home/runner/workspace/node_modules/drizzle-orm/neon-serverless/session.js:76
+2025-04-05 11:19:44.14
+d236f6d5
+User
+const result = await client.query(query, params);
+2025-04-05 11:19:44.14
+d236f6d5
+User
+^
+2025-04-05 11:19:44.14
+d236f6d5
+User
+2025-04-05 11:19:44.14
+d236f6d5
+User
+TypeError: client.query is not a function
+2025-04-05 11:19:44.14
+d236f6d5
+User
+at NeonPreparedQuery.execute (file:///home/runner/workspace/node_modules/drizzle-orm/neon-serverless/session.js:76:33)
+2025-04-05 11:19:44.14
+d236f6d5
+User
+at file:///home/runner/workspace/node_modules/drizzle-orm/pg-core/query-builders/select.js:708:30
+2025-04-05 11:19:44.14
+d236f6d5
+User
+at Object.startActiveSpan (file:///home/runner/workspace/node_modules/drizzle-orm/tracing.js:8:14)
+2025-04-05 11:19:44.14
+d236f6d5
+User
+at PgSelectBase.execute (file:///home/runner/workspace/node_modules/drizzle-orm/pg-core/query-builders/select.js:707:19)
+2025-04-05 11:19:44.14
+d236f6d5
+User
+at PgSelectBase.then (file:///home/runner/workspace/node_modules/drizzle-orm/query-promise.js:21:17)
+2025-04-05 11:19:44.14
+d236f6d5
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2025-04-05 11:19:44.14
+d236f6d5
+User
+2025-04-05 11:19:44.14
+d236f6d5
+User
+Node.js v20.18.1
+2025-04-05 11:19:44.15
+d236f6d5
+User
+npm notice
+2025-04-05 11:19:44.15
+d236f6d5
+User
+npm notice New major version of npm available! 10.8.2 -> 11.2.0
+2025-04-05 11:19:44.15
+d236f6d5
+User
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.2.0
+2025-04-05 11:19:44.15
+d236f6d5
+User
+npm notice To update run: npm install -g npm@11.2.0
+2025-04-05 11:19:44.15
+d236f6d5
+User
+npm notice
+2025-04-05 11:19:44.16
+d236f6d5
+System
+command finished with error [npm run start]: exit status 1
+2025-04-05 11:19:45.71
+d236f6d5
+User
+> rest-express@1.0.0 start
+2025-04-05 11:19:45.71
+d236f6d5
+User
+> NODE_ENV=production node dist/index.js
+
+Wrap
+
+Colors

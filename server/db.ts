@@ -5,21 +5,35 @@ import {
 } from "@shared/schema";
 
 // Create the database connection
-let db: any;
-let sql: any;
+let db: any = null;
+let sql: any = null;
 
 try {
   // Only attempt to create the connection if DATABASE_URL is provided
   if (process.env.DATABASE_URL) {
-    // Create a neon client with the direct method to avoid query errors
-    const connectionString = process.env.DATABASE_URL;
-    const neonClient = neon(connectionString);
-    
-    // Create connection using the following approach to prevent 'client.query is not a function' error
-    db = drizzle(neonClient as any);
-    sql = neonClient;
-    
-    console.log("Database connection initialized successfully");
+    try {
+      // Create a neon client with the direct method to avoid query errors
+      const connectionString = process.env.DATABASE_URL;
+      
+      // First make sure the client works properly
+      const neonClient = neon(connectionString);
+      
+      // Test if the client has a query function
+      if (typeof neonClient !== 'function') {
+        throw new Error("Neon client is not a function, DB connection will be disabled");
+      }
+      
+      // Create the DB connection with drizzle
+      db = drizzle(neonClient);
+      sql = neonClient;
+      
+      console.log("Database connection initialized successfully");
+    } catch (dbError) {
+      console.error("Error creating database client:", dbError);
+      // If there's any error, don't use the DB
+      db = null;
+      sql = null;
+    }
   } else {
     console.log("No DATABASE_URL provided, database connection not initialized");
     sql = null;
@@ -45,68 +59,104 @@ export async function initDb() {
   try {
     const neonClient = sql as any;
     
+    // Test if the neonClient is properly functioning
+    if (typeof neonClient !== 'function') {
+      throw new Error("Neon client is not a function, cannot create schema");
+    }
+    
     // Create users table
-    await neonClient`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        email TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `;
+    try {
+      await neonClient`
+        CREATE TABLE IF NOT EXISTS users (
+          id SERIAL PRIMARY KEY,
+          username TEXT UNIQUE NOT NULL,
+          password TEXT NOT NULL,
+          email TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `;
+    } catch (tableError) {
+      console.error("Error creating users table:", tableError);
+      throw new Error("Database schema initialization failed - users table");
+    }
     
     // Create concepts table
-    await neonClient`
-      CREATE TABLE IF NOT EXISTS concepts (
-        id SERIAL PRIMARY KEY,
-        name TEXT UNIQUE NOT NULL,
-        domain TEXT NOT NULL,
-        difficulty TEXT NOT NULL,
-        description TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `;
+    try {
+      await neonClient`
+        CREATE TABLE IF NOT EXISTS concepts (
+          id SERIAL PRIMARY KEY,
+          name TEXT UNIQUE NOT NULL,
+          domain TEXT NOT NULL,
+          difficulty TEXT NOT NULL,
+          description TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `;
+    } catch (tableError) {
+      console.error("Error creating concepts table:", tableError);
+      throw new Error("Database schema initialization failed - concepts table");
+    }
     
     // Create concept_relationships table
-    await neonClient`
-      CREATE TABLE IF NOT EXISTS concept_relationships (
-        id SERIAL PRIMARY KEY,
-        source_id INTEGER NOT NULL REFERENCES concepts(id),
-        target_id INTEGER NOT NULL REFERENCES concepts(id),
-        relationship_type TEXT NOT NULL,
-        strength INTEGER NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `;
+    try {
+      await neonClient`
+        CREATE TABLE IF NOT EXISTS concept_relationships (
+          id SERIAL PRIMARY KEY,
+          source_id INTEGER NOT NULL REFERENCES concepts(id),
+          target_id INTEGER NOT NULL REFERENCES concepts(id),
+          relationship_type TEXT NOT NULL,
+          strength INTEGER NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `;
+    } catch (tableError) {
+      console.error("Error creating concept_relationships table:", tableError);
+      throw new Error("Database schema initialization failed - concept_relationships table");
+    }
     
     // Create user_progress table
-    await neonClient`
-      CREATE TABLE IF NOT EXISTS user_progress (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL REFERENCES users(id),
-        concept_id INTEGER NOT NULL REFERENCES concepts(id),
-        is_learned BOOLEAN NOT NULL DEFAULT FALSE,
-        learned_at TIMESTAMP,
-        UNIQUE(user_id, concept_id)
-      )
-    `;
+    try {
+      await neonClient`
+        CREATE TABLE IF NOT EXISTS user_progress (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id),
+          concept_id INTEGER NOT NULL REFERENCES concepts(id),
+          is_learned BOOLEAN NOT NULL DEFAULT FALSE,
+          learned_at TIMESTAMP,
+          UNIQUE(user_id, concept_id)
+        )
+      `;
+    } catch (tableError) {
+      console.error("Error creating user_progress table:", tableError);
+      throw new Error("Database schema initialization failed - user_progress table");
+    }
     
     // Create chat_messages table
-    await neonClient`
-      CREATE TABLE IF NOT EXISTS chat_messages (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL REFERENCES users(id),
-        concept_id INTEGER NOT NULL REFERENCES concepts(id),
-        role TEXT NOT NULL,
-        content TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `;
+    try {
+      await neonClient`
+        CREATE TABLE IF NOT EXISTS chat_messages (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id),
+          concept_id INTEGER NOT NULL REFERENCES concepts(id),
+          role TEXT NOT NULL,
+          content TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `;
+    } catch (tableError) {
+      console.error("Error creating chat_messages table:", tableError);
+      throw new Error("Database schema initialization failed - chat_messages table");
+    }
     
     console.log("Database schema initialized successfully");
   } catch (error) {
     console.error("Error initializing database schema:", error);
+    
+    // Invalidate the database connection since there was an error
+    // This ensures fallback to in-memory storage
+    db = null;
+    sql = null;
+    
     throw error;
   }
 }
@@ -119,9 +169,28 @@ export async function seedInitialData() {
     return;
   }
   
+  // Verify if the db object is properly configured by testing it
+  try {
+    // Try to access the database
+    if (typeof db.insert !== 'function' || typeof db.select !== 'function') {
+      console.error("Database client interface is incomplete, cannot seed data");
+      db = null; // Invalidate db to use in-memory storage
+      return;
+    }
+  } catch (error) {
+    console.error("Error inspecting database client:", error);
+    db = null; // Invalidate db to use in-memory storage
+    return;
+  }
+  
   // Helper function to properly type db return values
-  const insertAndReturn = async <T>(table: any, values: any): Promise<T> => {
-    return await db.insert(table).values(values).returning().then((res: any[]) => res[0] as T);
+  const insertAndReturn = async <T>(table: any, values: any): Promise<T | null> => {
+    try {
+      return await db.insert(table).values(values).returning().then((res: any[]) => res[0] as T);
+    } catch (insertError) {
+      console.error("Error inserting data:", insertError);
+      return null;
+    }
   };
 
   try {
@@ -131,6 +200,7 @@ export async function seedInitialData() {
       existingConcepts = await db.select().from(concepts);
     } catch (error) {
       console.warn("Error checking existing concepts, proceeding with application startup:", error);
+      db = null; // Invalidate db to use in-memory storage
       return; // Skip seeding if we can't query the database
     }
     
@@ -156,12 +226,12 @@ export async function seedInitialData() {
       description: "Three fundamental laws that form the foundation of classical mechanics"
     });
     
-    const conservationLaws = await db.insert(concepts).values({
+    const conservationLaws = await insertAndReturn<typeof concepts.$inferSelect>(concepts, {
       name: "Conservation Laws",
       domain: "Physics",
       difficulty: "intermediate",
       description: "Principles stating that certain physical properties do not change over time"
-    }).returning().then(res => res[0]);
+    });
     
     const kinematics = await db.insert(concepts).values({
       name: "Kinematics",
@@ -303,7 +373,18 @@ export async function seedInitialData() {
     }).returning().then(res => res[0]);
     
     // Create relationships
-    await db.insert(conceptRelationships).values([
+    try {
+      // Check if concept objects were created successfully
+      if (!classicalMechanics || !newtonsLaws || !conservationLaws || !kinematics || 
+          !rotationalMotion || !vectorCalculus || !differentialEquations || !basicCalculus ||
+          !dataStructures || !algorithmAnalysis || !microeconomics || !macroeconomics ||
+          !gameTheory || !socialStructures || !socialInequality || !urbanSociology ||
+          !cognitivePsychology || !developmentalPsychology || !clinicalPsychology ||
+          !anthropology || !linguistics || !humanGeography) {
+        throw new Error("One or more concepts failed to be created");
+      }
+      
+      await db.insert(conceptRelationships).values([
       {
         sourceId: classicalMechanics.id,
         targetId: newtonsLaws.id,
@@ -442,6 +523,10 @@ export async function seedInitialData() {
         strength: 8
       }
     ]);
+    } catch (relErr) {
+      console.error("Error creating relationships:", relErr);
+      throw new Error("Failed to create concept relationships");
+    }
     
     console.log("Initial data seeded successfully");
   } catch (error) {

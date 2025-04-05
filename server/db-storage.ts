@@ -21,6 +21,22 @@ export class DbStorage implements IStorage {
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000 // 24 hours
     });
+    
+    // Check db availability and warn if it's not available
+    if (!db) {
+      console.warn("PostgreSQL database connection not available, DbStorage will use in-memory fallbacks");
+    } else {
+      try {
+        if (typeof db.select !== 'function' || typeof db.insert !== 'function') {
+          console.warn("PostgreSQL database interface incomplete, DbStorage will use in-memory fallbacks");
+        } else {
+          console.log("Database storage initialized successfully");
+        }
+      } catch (error) {
+        console.error("Error initializing database storage:", error);
+        console.warn("Falling back to in-memory storage for all operations");
+      }
+    }
   }
   
   // User methods
@@ -112,79 +128,178 @@ export class DbStorage implements IStorage {
   }
   
   async getConceptsByDomain(domain: string): Promise<Concept[]> {
-    return await db.select().from(concepts).where(eq(concepts.domain, domain));
+    try {
+      if (!db) {
+        console.warn("Database not available, falling back to in-memory storage");
+        return await memStorage.getConceptsByDomain(domain);
+      }
+      return await db.select().from(concepts).where(eq(concepts.domain, domain));
+    } catch (error) {
+      console.error("Error in getConceptsByDomain:", error);
+      return await memStorage.getConceptsByDomain(domain);
+    }
   }
   
   async createConcept(concept: InsertConcept): Promise<Concept> {
-    const result = await db.insert(concepts).values(concept).returning();
-    return result[0];
+    try {
+      if (!db) {
+        console.warn("Database not available, falling back to in-memory storage");
+        return await memStorage.createConcept(concept);
+      }
+      const result = await db.insert(concepts).values(concept).returning();
+      return result[0];
+    } catch (error) {
+      console.error("Error in createConcept:", error);
+      return await memStorage.createConcept(concept);
+    }
   }
   
   // Relationship methods
   async getConceptRelationship(id: number): Promise<ConceptRelationship | undefined> {
-    const result = await db.select().from(conceptRelationships).where(eq(conceptRelationships.id, id));
-    return result[0];
+    try {
+      if (!db) {
+        console.warn("Database not available, falling back to in-memory storage");
+        return await memStorage.getConceptRelationship(id);
+      }
+      const result = await db.select().from(conceptRelationships).where(eq(conceptRelationships.id, id));
+      return result[0];
+    } catch (error) {
+      console.error("Error in getConceptRelationship:", error);
+      return await memStorage.getConceptRelationship(id);
+    }
   }
   
   async getConceptRelationships(conceptId: number): Promise<ConceptRelationship[]> {
-    return await db.select().from(conceptRelationships).where(
-      eq(conceptRelationships.sourceId, conceptId)
-    );
+    try {
+      if (!db) {
+        console.warn("Database not available, falling back to in-memory storage");
+        return await memStorage.getConceptRelationships(conceptId);
+      }
+      return await db.select().from(conceptRelationships).where(
+        eq(conceptRelationships.sourceId, conceptId)
+      );
+    } catch (error) {
+      console.error("Error in getConceptRelationships:", error);
+      return await memStorage.getConceptRelationships(conceptId);
+    }
   }
   
   async createConceptRelationship(relationship: InsertConceptRelationship): Promise<ConceptRelationship> {
-    const result = await db.insert(conceptRelationships).values(relationship).returning();
-    return result[0];
+    try {
+      if (!db) {
+        console.warn("Database not available, falling back to in-memory storage");
+        return await memStorage.createConceptRelationship(relationship);
+      }
+      const result = await db.insert(conceptRelationships).values(relationship).returning();
+      return result[0];
+    } catch (error) {
+      console.error("Error in createConceptRelationship:", error);
+      return await memStorage.createConceptRelationship(relationship);
+    }
   }
   
   // User progress methods
   async getUserProgress(userId: number): Promise<UserProgress[]> {
-    return await db.select().from(userProgress).where(eq(userProgress.userId, userId));
+    try {
+      if (!db) {
+        console.warn("Database not available, falling back to in-memory storage");
+        return await memStorage.getUserProgress(userId);
+      }
+      return await db.select().from(userProgress).where(eq(userProgress.userId, userId));
+    } catch (error) {
+      console.error("Error in getUserProgress:", error);
+      return await memStorage.getUserProgress(userId);
+    }
   }
   
   async getUserProgressForConcept(userId: number, conceptId: number): Promise<UserProgress | undefined> {
-    const result = await db.select().from(userProgress).where(
-      and(
-        eq(userProgress.userId, userId),
-        eq(userProgress.conceptId, conceptId)
-      )
-    );
-    return result[0];
+    try {
+      if (!db) {
+        console.warn("Database not available, falling back to in-memory storage");
+        return await memStorage.getUserProgressForConcept(userId, conceptId);
+      }
+      const result = await db.select().from(userProgress).where(
+        and(
+          eq(userProgress.userId, userId),
+          eq(userProgress.conceptId, conceptId)
+        )
+      );
+      return result[0];
+    } catch (error) {
+      console.error("Error in getUserProgressForConcept:", error);
+      return await memStorage.getUserProgressForConcept(userId, conceptId);
+    }
   }
   
   async createUserProgress(progress: InsertUserProgress): Promise<UserProgress> {
-    const result = await db.insert(userProgress).values(progress).returning();
-    return result[0];
+    try {
+      if (!db) {
+        console.warn("Database not available, falling back to in-memory storage");
+        return await memStorage.createUserProgress(progress);
+      }
+      const result = await db.insert(userProgress).values(progress).returning();
+      return result[0];
+    } catch (error) {
+      console.error("Error in createUserProgress:", error);
+      return await memStorage.createUserProgress(progress);
+    }
   }
   
   async updateUserProgress(id: number, progress: Partial<InsertUserProgress>): Promise<UserProgress> {
-    const result = await db.update(userProgress)
-      .set(progress)
-      .where(eq(userProgress.id, id))
-      .returning();
-    
-    if (result.length === 0) {
-      throw new Error(`User progress with ID ${id} not found`);
+    try {
+      if (!db) {
+        console.warn("Database not available, falling back to in-memory storage");
+        return await memStorage.updateUserProgress(id, progress);
+      }
+      const result = await db.update(userProgress)
+        .set(progress)
+        .where(eq(userProgress.id, id))
+        .returning();
+      
+      if (result.length === 0) {
+        throw new Error(`User progress with ID ${id} not found`);
+      }
+      
+      return result[0];
+    } catch (error) {
+      console.error("Error in updateUserProgress:", error);
+      return await memStorage.updateUserProgress(id, progress);
     }
-    
-    return result[0];
   }
   
   // Chat methods
   async getChatMessages(userId: number, conceptId: number): Promise<ChatMessage[]> {
-    return await db.select().from(chatMessages)
-      .where(
-        and(
-          eq(chatMessages.userId, userId),
-          eq(chatMessages.conceptId, conceptId)
+    try {
+      if (!db) {
+        console.warn("Database not available, falling back to in-memory storage");
+        return await memStorage.getChatMessages(userId, conceptId);
+      }
+      return await db.select().from(chatMessages)
+        .where(
+          and(
+            eq(chatMessages.userId, userId),
+            eq(chatMessages.conceptId, conceptId)
+          )
         )
-      )
-      .orderBy(chatMessages.createdAt);
+        .orderBy(chatMessages.createdAt);
+    } catch (error) {
+      console.error("Error in getChatMessages:", error);
+      return await memStorage.getChatMessages(userId, conceptId);
+    }
   }
   
   async createChatMessage(message: InsertChatMessage): Promise<ChatMessage> {
-    const result = await db.insert(chatMessages).values(message).returning();
-    return result[0];
+    try {
+      if (!db) {
+        console.warn("Database not available, falling back to in-memory storage");
+        return await memStorage.createChatMessage(message);
+      }
+      const result = await db.insert(chatMessages).values(message).returning();
+      return result[0];
+    } catch (error) {
+      console.error("Error in createChatMessage:", error);
+      return await memStorage.createChatMessage(message);
+    }
   }
   
   // Domain methods

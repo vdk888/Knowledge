@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { initDb, seedInitialData } from "./db";
 
 const app = express();
 app.use(express.json());
@@ -37,6 +38,28 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Initialize database if we have a DATABASE_URL
+  if (process.env.DATABASE_URL) {
+    try {
+      log("Initializing database...");
+      await initDb();
+      log("Database schema initialized successfully");
+      
+      try {
+        await seedInitialData();
+        log("Database initial data seeded successfully");
+      } catch (seedError) {
+        log("Warning: Error seeding initial data: " + seedError);
+        log("Continuing with application startup...");
+      }
+    } catch (error) {
+      log("Warning: Error initializing database: " + error);
+      log("Continuing with in-memory storage...");
+    }
+  } else {
+    log("No DATABASE_URL found, using in-memory storage");
+  }
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

@@ -54,7 +54,7 @@ export interface IStorage {
   }>;
   
   // Session store
-  sessionStore: session.SessionStore;
+  sessionStore: any;
 }
 
 // In-memory storage implementation
@@ -65,7 +65,7 @@ export class MemStorage implements IStorage {
   private userProgress: Map<number, UserProgress>;
   private chatMessages: Map<number, ChatMessage>;
   
-  sessionStore: session.SessionStore;
+  sessionStore: any;
   
   private userId: number = 1;
   private conceptId: number = 1;
@@ -102,7 +102,12 @@ export class MemStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.userId++;
     const now = new Date();
-    const user: User = { ...insertUser, id, createdAt: now };
+    const user: User = { 
+      ...insertUser, 
+      id, 
+      createdAt: now,
+      email: insertUser.email || null 
+    };
     this.users.set(id, user);
     return user;
   }
@@ -171,7 +176,12 @@ export class MemStorage implements IStorage {
   
   async createUserProgress(insertProgress: InsertUserProgress): Promise<UserProgress> {
     const id = this.progressId++;
-    const progress: UserProgress = { ...insertProgress, id };
+    const progress: UserProgress = { 
+      ...insertProgress, 
+      id,
+      isLearned: insertProgress.isLearned ?? false,
+      learnedAt: insertProgress.learnedAt || null 
+    };
     this.userProgress.set(id, progress);
     return progress;
   }
@@ -191,7 +201,10 @@ export class MemStorage implements IStorage {
   async getChatMessages(userId: number, conceptId: number): Promise<ChatMessage[]> {
     return Array.from(this.chatMessages.values())
       .filter((message) => message.userId === userId && message.conceptId === conceptId)
-      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+      .sort((a, b) => {
+        if (!a.createdAt || !b.createdAt) return 0;
+        return a.createdAt.getTime() - b.createdAt.getTime();
+      });
   }
   
   async createChatMessage(insertMessage: InsertChatMessage): Promise<ChatMessage> {
@@ -205,9 +218,9 @@ export class MemStorage implements IStorage {
   // Domain methods
   async getDomains(): Promise<string[]> {
     const domains = new Set<string>();
-    for (const concept of this.concepts.values()) {
+    Array.from(this.concepts.values()).forEach(concept => {
       domains.add(concept.domain);
-    }
+    });
     return Array.from(domains);
   }
   
@@ -574,4 +587,10 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Use in-memory storage by default, but allow switching to database storage
+import { DbStorage } from "./db-storage";
+export const memStorage = new MemStorage();
+export const dbStorage = new DbStorage();
+
+// Use database storage when we have a DATABASE_URL
+export const storage: IStorage = process.env.DATABASE_URL ? dbStorage : memStorage;

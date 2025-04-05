@@ -62,12 +62,22 @@ app.use((req, res, next) => {
   
   const server = await registerRoutes(app);
 
+  // Global error handler
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
-
-    res.status(status).json({ message });
-    throw err;
+    
+    // Log the error
+    log(`Error ${status}: ${message}`, "express");
+    if (err.stack) {
+      log(err.stack, "express");
+    }
+    
+    // Send a structured error response
+    res.status(status).json({ 
+      error: message,
+      status: status
+    });
   });
 
   // importantly only setup vite in development and after
@@ -79,15 +89,19 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = 5000;
+  // Allow port override via environment variables
+  // This enables flexibility for different deployment environments
+  const port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
+  
+  // Check if we have a database connection
+  const databaseConnected = process.env.DATABASE_URL !== undefined;
+  
   server.listen({
     port,
     host: "0.0.0.0",
     reusePort: true,
   }, () => {
-    log(`serving on port ${port}`);
+    log(`Server running on port ${port}`);
+    log(`Database ${databaseConnected ? 'configured' : 'not configured'}, using ${databaseConnected ? 'PostgreSQL' : 'in-memory'} storage`);
   });
 })();

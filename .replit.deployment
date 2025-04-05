@@ -1,0 +1,13 @@
+# Deployment configuration file for Knowledge Atlas
+run = ["npm", "start"]
+entrypoint = "server/index.ts"
+
+# Environment variables needed
+[environment]
+PORT = "3000"
+NODE_ENV = "production"
+
+# Hidden variables (configure these in the Replit interface)
+[secrets]
+DATABASE_URL = "Add your PostgreSQL database URL here"
+SESSION_SECRET = "Change this to a secure secret session key"

@@ -590,7 +590,22 @@ export class MemStorage implements IStorage {
 // Use in-memory storage by default, but allow switching to database storage
 import { DbStorage } from "./db-storage";
 export const memStorage = new MemStorage();
-export const dbStorage = new DbStorage();
 
-// Use database storage when we have a DATABASE_URL
-export const storage: IStorage = process.env.DATABASE_URL ? dbStorage : memStorage;
+// Only initialize database storage if we have a DATABASE_URL
+let dbStorageInstance: DbStorage | null = null;
+try {
+  if (process.env.DATABASE_URL) {
+    dbStorageInstance = new DbStorage();
+    console.log("Database storage initialized successfully");
+  } else {
+    console.log("No DATABASE_URL found, database storage will not be available");
+  }
+} catch (error) {
+  console.error("Error initializing database storage:", error);
+  dbStorageInstance = null;
+}
+
+export const dbStorage = dbStorageInstance || memStorage;
+
+// Safely use database storage when available, otherwise fall back to memory storage
+export const storage: IStorage = dbStorageInstance ? dbStorageInstance : memStorage;

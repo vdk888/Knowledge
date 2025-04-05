@@ -71,7 +71,7 @@ const ChatPanel = ({ concept }: ChatPanelProps) => {
   }, [concept, messages, isLoadingMessages, sendMessageMutation.isPending]);
   
   return (
-    <div className="w-96 border-l border-neutral-200 bg-white flex flex-col">
+    <div className="h-full bg-white flex flex-col"> {/* Removed w-96, added h-full */}
       <div className="p-4 border-b border-neutral-200 flex justify-between items-center">
         <h2 className="font-heading font-semibold text-neutral-900">Learning Assistant</h2>
         <div className="flex space-x-2">

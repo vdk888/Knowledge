@@ -168,7 +168,7 @@ export default function HomePage() {
           
           {/* Chat Panel - fixed width on desktop, full width when toggled on mobile */}
           {(!isMobile || isChatVisible) && (
-            <div className={`${isMobile ? 'flex-1' : 'w-96'} border-l border-neutral-200`}>
+            <div className={`${isMobile ? 'flex-1' : 'w-96'} border-l border-neutral-200 flex flex-col overflow-hidden`}>
               <ChatPanel concept={selectedConcept} />
             </div>
           )}
